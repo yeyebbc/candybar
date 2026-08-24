@@ -148,6 +148,8 @@ public class RequestFragment extends Fragment implements View.OnClickListener {
         setHasOptionsMenu(false);
         resetRecyclerViewPadding(getResources().getConfiguration().orientation);
 
+        showIconRequestNotification();
+
         mProgress.getIndeterminateDrawable().setColorFilter(
                 ColorHelper.getAttributeColor(getActivity(), com.google.android.material.R.attr.colorSecondary),
                 PorterDuff.Mode.SRC_IN);
@@ -314,6 +316,38 @@ public class RequestFragment extends Fragment implements View.OnClickListener {
         if (mAsyncTask != null) return;
 
         mAsyncTask = new RequestLoader().executeOnThreadPool();
+    }
+
+    private boolean hasNotificationBeenShown() {
+        return Preferences.get(requireActivity()).isIconRequestNotificationShown();
+    }
+
+    private void showIconRequestNotification() {
+        if (!hasIconRequestNotification()) return;
+        if (hasNotificationBeenShown()) return;
+
+        MaterialDialog dialog = new MaterialDialog.Builder(requireActivity())
+                .typeface(TypefaceHelper.getMedium(requireActivity()),
+                        TypefaceHelper.getRegular(requireActivity()))
+                .title(getIconRequestNotificationTitle())
+                .content(R.string.icon_request_notification_message)
+                .positiveText(R.string.ok)
+                .onPositive((d, which) -> Preferences.get(requireActivity())
+                        .setIconRequestNotificationShown(true))
+                .cancelable(false)
+                .canceledOnTouchOutside(false)
+                .build();
+        dialog.show();
+    }
+
+    private boolean hasIconRequestNotification() {
+        return !requireActivity().getString(R.string.icon_request_notification_message).isEmpty();
+    }
+
+    private String getIconRequestNotificationTitle() {
+        String title = requireActivity().getString(R.string.icon_request_notification_title);
+        if (title.isEmpty()) return requireActivity().getString(R.string.request_title);
+        return title;
     }
 
     public void refreshIconRequest() {

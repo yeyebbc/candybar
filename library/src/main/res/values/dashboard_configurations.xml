@@ -227,6 +227,13 @@
     <string name="regular_request_method"></string>
     <string name="premium_request_method"></string>
 
+    <!-- Icon request notification dialog
+        Shown once when the icon request page is opened for the first time after a fresh install or an update.
+        Leave "icon_request_notification_message" empty to disable the dialog.
+        Leave "icon_request_notification_title" empty to use the default "Icon Request" title. -->
+    <string name="icon_request_notification_title"></string>
+    <string name="icon_request_notification_message"></string>
+
     <!-- Email to use when sending icon requests.
         Regular request email address will be used to send bug reports.
         You can leave "premium_request_email" empty to use the regular request's email to send premium icon requests. -->

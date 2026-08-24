@@ -75,6 +75,7 @@ public class Preferences {
 
     private static final String KEY_LANGUAGE_PREFERENCE = "language_preference";
     private static final String KEY_CURRENT_LOCALE = "current_locale";
+    private static final String KEY_ICON_REQUEST_NOTIFICATION_VERSION = "icon_request_notification_version";
 
     private static WeakReference<Preferences> mPreferences;
 
@@ -356,6 +357,27 @@ public class Preferences {
             return true;
         } else {
             return false;
+        }
+    }
+
+    public boolean isIconRequestNotificationShown() {
+        return getSharedPreferences().getInt(KEY_ICON_REQUEST_NOTIFICATION_VERSION, 0)
+                == getCurrentVersionCode();
+    }
+
+    public void setIconRequestNotificationShown(boolean shown) {
+        if (shown) {
+            getSharedPreferences().edit().putInt(KEY_ICON_REQUEST_NOTIFICATION_VERSION,
+                    getCurrentVersionCode()).apply();
+        }
+    }
+
+    private int getCurrentVersionCode() {
+        try {
+            return mContext.getPackageManager()
+                    .getPackageInfo(mContext.getPackageName(), 0).versionCode;
+        } catch (PackageManager.NameNotFoundException e) {
+            return 0;
         }
     }
 
