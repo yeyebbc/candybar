@@ -1,8 +1,10 @@
 # CandyBar
+
 [![JitPack](https://img.shields.io/jitpack/version/com.github.zixpo/candybar?color=20a182&label=JitPack&style=flat-square)](https://jitpack.io/#zixpo/candybar)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/zixpo/candybar/android.yml?branch=main&style=flat-square)](https://github.com/zixpo/candybar/actions/workflows/android.yml)
 [![License](https://img.shields.io/github/license/zixpo/candybar?style=flat-square)](/LICENSE)
 
+My fork with a little improvements.
 Improved version of the original [CandyBar Dashboard](https://github.com/danimahardhika/candybar-library).
 
 Also, you should definitely check out [Blueprint Dashboard](https://github.com/jahirfiquitiva/blueprint/)! It's a modern project that takes advantage of new build features.
@@ -13,7 +15,7 @@ This is the library of CandyBar Dashboard. It is only used for development purpo
   <img height="80" alt="Get it on Google Play" src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png">
 </a>
 
-Subscribe to [***CandyBar Builds Telegram Channel***](https://t.me/candybar_builds)
+Subscribe to [**_CandyBar Builds Telegram Channel_**](https://t.me/candybar_builds)
 
 <details>
 <summary>App screenshots <i>(Click to expand)</i></summary>
@@ -35,10 +37,13 @@ Subscribe to [***CandyBar Builds Telegram Channel***](https://t.me/candybar_buil
 </details>
 
 # How to use
+
 Just explore the wiki to get started.
+
 ### [Wiki ➜](https://github.com/zixpo/candybar-sample/wiki)
 
 # Features
+
 - License checker
 - Apply: Directly apply in supported launcher
 - Icon picker: See all icons
@@ -67,19 +72,23 @@ Just explore the wiki to get started.
 - API for [advanced configurations](https://github.com/zixpo/candybar-sample/wiki/Advanced-dashboard-configurations)
 
 # What's new?
+
 Check out the [changelog](/CHANGELOG.md) to find out what's new.
 
 # Translation
+
 Help us translate CandyBar in many other languages. [Translate CandyBar](https://crowdin.com/project/candybar).
 
 Already contributed translation? [Submit your name here](https://github.com/zixpo/candybar/discussions/142).
 
 # Need help?
+
 Need help in something or maybe you have some question, just head out
 to [Q&A Discussions](https://github.com/zixpo/candybar/discussions/categories/q-a).
 Try to find your answer there or ask a new question if you can't find your answer.
 
 # Support me
+
 I am doing this work for free, but you can show your appreciation
 and support me by donating. It would keep me motivated to work on
 the dashboard.
@@ -89,11 +98,13 @@ the dashboard.
 You can also donate from the [CandyBar App](https://play.google.com/store/apps/details?id=com.candybar.dev) published on Google Play Store.
 
 ### Social
+
 [![GitHub Follow](https://img.shields.io/github/followers/sarsamurmu?color=%23dfdfdf&label=Follow%20on%20GitHub&logo=github&style=for-the-badge)](https://github.com/sarsamurmu)
 
 **Thanks! Have fun with the dashboard 😉**
 
 # License
+
 ```
 Copyright (c) 2014-2016 Dani Mahardhika
 
