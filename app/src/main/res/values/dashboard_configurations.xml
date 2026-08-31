@@ -34,6 +34,19 @@
     <string name="google_play_dev">https://play.google.com/store/apps/dev?id=your_developer_id</string>
     <bool name="use_flat_card">true</bool>
 
+    <!-- CONFIG: NAVIGATION -->
+    <!-- Use a bottom navigation bar instead of the navigation drawer -->
+    <bool name="use_bottom_navigation">true</bool>
+
+    <!-- Show text labels below bottom navigation icons -->
+    <bool name="show_bottom_navigation_labels">true</bool>
+
+    <!-- Use MD3-styled navigation controls while keeping the Material You (dynamic)
+        or MD2 color palette. When false, the controls follow the Material You preference:
+        MY on = MD3 controls, MY off = MD2 controls. When true, controls are always
+        MD3 styled while colors still follow the theme (dynamic with MY, MD2 colors without). -->
+    <bool name="use_md3_controls">true</bool>
+
     <!-- CONFIG: NAVIGATION VIEW HEADER -->
     <string name="navigation_view_header">nav_head</string>
     <string name="navigation_view_header_title">CandyBar</string>

@@ -81,7 +81,8 @@ public class TapIntroHelper {
                     //Todo:
                     //Typeface description = TypefaceHelper.getRegular(context);
 
-                    if (toolbar != null) {
+                    if (toolbar != null &&
+                            !context.getResources().getBoolean(R.bool.use_bottom_navigation)) {
                         TapTarget tapTarget = TapTarget.forToolbarNavigationIcon(toolbar,
                                 context.getResources().getString(R.string.tap_intro_home_navigation),
                                 context.getResources().getString(R.string.tap_intro_home_navigation_desc))

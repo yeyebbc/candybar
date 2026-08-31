@@ -15,6 +15,20 @@
         <item name="itemTextAppearanceActiveBoldEnabled">false</item>
     </style>
 
+    <style name="CandyBar.ThemeOverlay.BottomNavigation.MD2" parent="">
+        <item name="colorPrimary">?cb_colorAccent</item>
+        <item name="android:textColorSecondary">@color/navigation_view_item_highlight</item>
+        <item name="colorOnSurface">?cb_primaryText</item>
+    </style>
+
+    <style name="CandyBar.ThemeOverlay.BottomNavigation.MD3" parent="">
+        <item name="android:textColorSecondary">@color/navigation_view_item_highlight</item>
+        <item name="colorOnSecondaryContainer">?cb_navigationViewTextSelected</item>
+        <item name="colorOnSurfaceVariant">?cb_navigationViewText</item>
+        <item name="colorOnSurface">?cb_navigationViewText</item>
+        <item name="colorSecondaryContainer">?cb_navigationViewSelectedBackground</item>
+    </style>
+
     <style name="RippleStyle">
         <item name="colorControlHighlight">?cb_rippleColor</item>
     </style>

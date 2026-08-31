@@ -8,6 +8,7 @@ import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.graphics.Color;
+import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -19,6 +20,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.webkit.URLUtil;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -59,6 +61,8 @@ import com.danimahardhika.android.helpers.core.utils.LogUtil;
 import com.danimahardhika.android.helpers.license.LicenseHelper;
 import com.danimahardhika.android.helpers.permission.PermissionCode;
 import com.google.android.gms.tasks.Task;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.android.material.navigation.NavigationBarView;
 import com.google.android.material.navigation.NavigationView;
 import com.google.android.play.core.review.ReviewInfo;
 import com.google.android.play.core.review.ReviewManager;
@@ -94,6 +98,7 @@ import candybar.lib.helpers.JsonHelper;
 import candybar.lib.helpers.LicenseCallbackHelper;
 import candybar.lib.helpers.LocaleHelper;
 import candybar.lib.helpers.NavigationViewHelper;
+import candybar.lib.helpers.PresetsHelper;
 import candybar.lib.helpers.RequestHelper;
 import candybar.lib.helpers.ThemeHelper;
 import candybar.lib.helpers.TypefaceHelper;
@@ -140,8 +145,11 @@ public abstract class CandyBarMainActivity extends AppCompatActivity implements
         SearchListener, WallpapersListener {
 
     private TextView mToolbarTitle;
+    private Toolbar mToolbar;
     private DrawerLayout mDrawerLayout;
     private NavigationView mNavigationView;
+    private BottomNavigationView mBottomNavigation;
+    private FrameLayout mBottomNavigationContainer;
 
     private Extras.Tag mFragmentTag;
     private int mPosition, mLastPosition;
@@ -150,6 +158,7 @@ public abstract class CandyBarMainActivity extends AppCompatActivity implements
     private LicenseHelper mLicenseHelper;
 
     private boolean mIsMenuVisible = true;
+    private boolean mUseBottomNavigation;
     private boolean prevIsDarkTheme;
 
     public static List<Request> sMissedApps;
@@ -205,24 +214,39 @@ public abstract class CandyBarMainActivity extends AppCompatActivity implements
 
         mDrawerLayout = findViewById(R.id.drawer_layout);
         mNavigationView = findViewById(R.id.navigation_view);
-        Toolbar toolbar = findViewById(R.id.toolbar);
+        mBottomNavigationContainer = findViewById(R.id.bottom_navigation_container);
+        mToolbar = findViewById(R.id.toolbar);
         mToolbarTitle = findViewById(R.id.toolbar_title);
-
-        toolbar.setPopupTheme(isMaterialYou ? R.style.CandyBar_Theme_App_MaterialYou : R.style.CandyBar_Theme_App_DayNight);
-        toolbar.setTitle("");
-        setSupportActionBar(toolbar);
+        mUseBottomNavigation = getResources().getBoolean(R.bool.use_bottom_navigation);
+        mToolbar.setPopupTheme(isMaterialYou
+                ? R.style.CandyBar_Theme_App_MaterialYou
+                : R.style.CandyBar_Theme_App_DayNight);
+        mToolbar.setTitle("");
+        setSupportActionBar(mToolbar);
 
         mFragManager = getSupportFragmentManager();
 
-        initNavigationView(toolbar);
-        initNavigationViewHeader();
+        if (mUseBottomNavigation) {
+            initBottomNavigation(isMaterialYou);
+        } else {
+            initNavigationView(mToolbar);
+            initNavigationViewHeader();
+        }
         registerBackPressHandler();
 
-        ViewCompat.setOnApplyWindowInsetsListener(toolbar, (v, insets) -> {
-            ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) v.getLayoutParams();
+        ViewCompat.setOnApplyWindowInsetsListener(mDrawerLayout, (v, insets) -> {
+            ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) mToolbar.getLayoutParams();
             params.topMargin = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top;
             findViewById(R.id.inset_padding).getLayoutParams().height = params.topMargin;
-            return WindowInsetsCompat.CONSUMED;
+            if (mBottomNavigation != null) {
+                int bottomInset = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom;
+                mBottomNavigation.setPadding(
+                        mBottomNavigation.getPaddingLeft(),
+                        mBottomNavigation.getPaddingTop(),
+                        mBottomNavigation.getPaddingRight(),
+                        bottomInset);
+            }
+            return insets;
         });
 
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
@@ -386,7 +410,9 @@ public abstract class CandyBarMainActivity extends AppCompatActivity implements
     @Override
     protected void onPostCreate(Bundle savedInstanceState) {
         super.onPostCreate(savedInstanceState);
-        mDrawerToggle.syncState();
+        if (mDrawerToggle != null) {
+            mDrawerToggle.syncState();
+        }
     }
 
     @Override
@@ -397,7 +423,9 @@ public abstract class CandyBarMainActivity extends AppCompatActivity implements
             return;
         }
         LocaleHelper.setLocale(this);
-        if (mIsMenuVisible) mDrawerToggle.onConfigurationChanged(newConfig);
+        if (mIsMenuVisible && mDrawerToggle != null) {
+            mDrawerToggle.onConfigurationChanged(newConfig);
+        }
     }
 
     @Override
@@ -476,11 +504,9 @@ public abstract class CandyBarMainActivity extends AppCompatActivity implements
 
     @Override
     public void onPiracyAppChecked(boolean isPiracyAppInstalled) {
-        MenuItem menuItem = mNavigationView.getMenu().findItem(R.id.navigation_view_request);
-        if (menuItem != null) {
-            menuItem.setVisible(getResources().getBoolean(
-                    R.bool.enable_icon_request) || !isPiracyAppInstalled);
-        }
+        boolean visible = getResources().getBoolean(
+                R.bool.enable_icon_request) || !isPiracyAppInstalled;
+        setNavigationItemVisible(R.id.navigation_view_request, visible);
     }
 
     @Override
@@ -745,31 +771,39 @@ public abstract class CandyBarMainActivity extends AppCompatActivity implements
 
     @Override
     public void onSearchExpanded(boolean expand) {
-        Toolbar toolbar = findViewById(R.id.toolbar);
         mIsMenuVisible = !expand;
 
         if (expand) {
             int color = ColorHelper.getAttributeColor(this, R.attr.cb_toolbarIcon);
-            toolbar.setNavigationIcon(DrawableHelper.getTintedDrawable(
+            mToolbar.setNavigationIcon(DrawableHelper.getTintedDrawable(
                     this, R.drawable.ic_toolbar_back, color));
-            // It does not work and causes issue with back press on icon search fragment
-            // toolbar.setNavigationOnClickListener(view -> onBackPressed());
+            if (mUseBottomNavigation) {
+                mToolbar.setNavigationOnClickListener(view ->
+                        getOnBackPressedDispatcher().onBackPressed());
+            }
         } else {
             SoftKeyboardHelper.closeKeyboard(this);
             ColorHelper.setStatusBarColor(this, Color.TRANSPARENT, true);
-            if (CandyBarApplication.getConfiguration().getNavigationIcon() == CandyBarApplication.NavigationIcon.DEFAULT) {
-                mDrawerToggle.setDrawerArrowDrawable(new DrawerArrowDrawable(this));
+            if (mUseBottomNavigation) {
+                mToolbar.setNavigationIcon(null);
+                mToolbar.setNavigationOnClickListener(null);
             } else {
-                toolbar.setNavigationIcon(ConfigurationHelper.getNavigationIcon(this,
-                        CandyBarApplication.getConfiguration().getNavigationIcon()));
-            }
+                if (CandyBarApplication.getConfiguration().getNavigationIcon() == CandyBarApplication.NavigationIcon.DEFAULT) {
+                    mDrawerToggle.setDrawerArrowDrawable(new DrawerArrowDrawable(this));
+                } else {
+                    mToolbar.setNavigationIcon(ConfigurationHelper.getNavigationIcon(this,
+                            CandyBarApplication.getConfiguration().getNavigationIcon()));
+                }
 
-            toolbar.setNavigationOnClickListener(view ->
-                    mDrawerLayout.openDrawer(GravityCompat.START));
+                mToolbar.setNavigationOnClickListener(view ->
+                        mDrawerLayout.openDrawer(GravityCompat.START));
+            }
         }
 
-        mDrawerLayout.setDrawerLockMode(expand ? DrawerLayout.LOCK_MODE_LOCKED_CLOSED :
-                DrawerLayout.LOCK_MODE_UNLOCKED);
+        mDrawerLayout.setDrawerLockMode(
+                expand || mUseBottomNavigation
+                        ? DrawerLayout.LOCK_MODE_LOCKED_CLOSED
+                        : DrawerLayout.LOCK_MODE_UNLOCKED);
         supportInvalidateOptionsMenu();
     }
 
@@ -779,6 +813,88 @@ public abstract class CandyBarMainActivity extends AppCompatActivity implements
                 mConfig.getLicenseKey(),
                 mConfig.getDonationProductsId(),
                 null);
+    }
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        if (mUseBottomNavigation && mFragmentTag == Extras.Tag.HOME && mIsMenuVisible) {
+            getMenuInflater().inflate(R.menu.menu_home_navigation_actions, menu);
+            menu.findItem(R.id.menu_home_presets).setVisible(
+                    PresetsHelper.getPresetsCount(this) > 0);
+            int iconColor = ColorHelper.getAttributeColor(this, R.attr.cb_toolbarIcon);
+            for (int i = 0; i < menu.size(); i++) {
+                Drawable icon = menu.getItem(i).getIcon();
+                if (icon != null) icon.setTint(iconColor);
+            }
+        }
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        int position;
+        int id = item.getItemId();
+        if (id == R.id.menu_home_presets) {
+            position = Extras.Tag.PRESETS.idx;
+        } else if (id == R.id.menu_home_settings) {
+            position = Extras.Tag.SETTINGS.idx;
+        } else if (id == R.id.menu_home_faqs) {
+            position = Extras.Tag.FAQS.idx;
+        } else if (id == R.id.menu_home_about) {
+            position = Extras.Tag.ABOUT.idx;
+        } else {
+            return super.onOptionsItemSelected(item);
+        }
+        selectPosition(position);
+        return true;
+    }
+
+    private void initBottomNavigation(boolean isMaterialYou) {
+        mNavigationView.setVisibility(View.GONE);
+        mDrawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED);
+        mToolbar.setNavigationIcon(null);
+        mToolbar.setNavigationOnClickListener(null);
+
+        boolean useMd3Controls = isMaterialYou
+                || getResources().getBoolean(R.bool.use_md3_controls);
+        int layout = useMd3Controls
+                ? R.layout.bottom_navigation_md3
+                : R.layout.bottom_navigation_md2;
+        mBottomNavigation = (BottomNavigationView) getLayoutInflater().inflate(
+                layout, mBottomNavigationContainer, false);
+        mBottomNavigationContainer.addView(mBottomNavigation);
+        mBottomNavigationContainer.setVisibility(View.VISIBLE);
+        mBottomNavigation.setLabelVisibilityMode(
+                getResources().getBoolean(R.bool.show_bottom_navigation_labels)
+                        ? NavigationBarView.LABEL_VISIBILITY_LABELED
+                        : NavigationBarView.LABEL_VISIBILITY_UNLABELED);
+
+        initNavigationItems();
+        int[] itemIds = {
+                R.id.navigation_view_home,
+                R.id.navigation_view_apply,
+                R.id.navigation_view_icons,
+                R.id.navigation_view_request,
+                R.id.navigation_view_wallpapers
+        };
+        for (int itemId : itemIds) {
+            MenuItem drawerItem = mNavigationView.getMenu().findItem(itemId);
+            mBottomNavigation.getMenu().findItem(itemId).setVisible(drawerItem.isVisible());
+        }
+        mBottomNavigation.setOnItemSelectedListener(item -> {
+            int position = getPositionForNavigationItem(item.getItemId());
+            return position >= 0 && selectPositionInternal(position);
+        });
+    }
+
+    private void initNavigationItems() {
+        if (WallpaperHelper.getWallpaperType(this) == WallpaperHelper.EXTERNAL_APP) {
+            mNavigationView.getMenu().findItem(R.id.navigation_view_wallpapers)
+                    .setTitle(R.string.navigation_view_wallpaper_app);
+        }
+        NavigationViewHelper.initApply(mNavigationView);
+        NavigationViewHelper.initIconRequest(mNavigationView);
+        NavigationViewHelper.initWallpapers(mNavigationView);
+        NavigationViewHelper.initPresets(mNavigationView);
     }
 
     private void initNavigationView(Toolbar toolbar) {
@@ -811,17 +927,7 @@ public abstract class CandyBarMainActivity extends AppCompatActivity implements
             mDrawerToggle.setDrawerIndicatorEnabled(true);
         }
 
-        if (WallpaperHelper.getWallpaperType(this) == WallpaperHelper.EXTERNAL_APP) {
-            mNavigationView.getMenu().findItem(R.id.navigation_view_wallpapers).setTitle(R.string.navigation_view_wallpaper_app);
-        }
-
-        mDrawerLayout.setDrawerShadow(R.drawable.drawer_shadow, GravityCompat.START);
-        mDrawerLayout.addDrawerListener(mDrawerToggle);
-
-        NavigationViewHelper.initApply(mNavigationView);
-        NavigationViewHelper.initIconRequest(mNavigationView);
-        NavigationViewHelper.initWallpapers(mNavigationView);
-        NavigationViewHelper.initPresets(mNavigationView);
+        initNavigationItems();
 
         ColorStateList itemStateList = ContextCompat.getColorStateList(this,
                 R.color.navigation_view_item_highlight);
@@ -833,17 +939,11 @@ public abstract class CandyBarMainActivity extends AppCompatActivity implements
 //                        R.drawable.navigation_view_item_background);
 //        mNavigationView.setItemBackground(background);
         mNavigationView.setNavigationItemSelectedListener(item -> {
-            int id = item.getItemId();
-            if (id == R.id.navigation_view_home) mPosition = Extras.Tag.HOME.idx;
-            else if (id == R.id.navigation_view_apply) mPosition = Extras.Tag.APPLY.idx;
-            else if (id == R.id.navigation_view_icons) mPosition = Extras.Tag.ICONS.idx;
-            else if (id == R.id.navigation_view_request) mPosition = Extras.Tag.REQUEST.idx;
-            else if (id == R.id.navigation_view_wallpapers) mPosition = Extras.Tag.WALLPAPERS.idx;
-            else if (id == R.id.navigation_view_presets) mPosition = Extras.Tag.PRESETS.idx;
-            else if (id == R.id.navigation_view_settings) mPosition = Extras.Tag.SETTINGS.idx;
-            else if (id == R.id.navigation_view_faqs) mPosition = Extras.Tag.FAQS.idx;
-            else if (id == R.id.navigation_view_about) mPosition = Extras.Tag.ABOUT.idx;
-
+            int position = getPositionForNavigationItem(item.getItemId());
+            if (position < 0) {
+                return false;
+            }
+            mPosition = position;
             item.setChecked(true);
             mDrawerLayout.closeDrawers();
             return true;
@@ -949,35 +1049,40 @@ public abstract class CandyBarMainActivity extends AppCompatActivity implements
     }
 
     public void selectPosition(int position) {
-        if (position == 3) {
+        selectPositionInternal(position);
+    }
+
+    private boolean selectPositionInternal(int position) {
+        if (position == Extras.Tag.REQUEST.idx) {
             if (!getResources().getBoolean(R.bool.enable_icon_request) &&
                     getResources().getBoolean(R.bool.enable_premium_request)) {
-                if (!Preferences.get(this).isPremiumRequestEnabled())
-                    return;
+                if (!Preferences.get(this).isPremiumRequestEnabled()) {
+                    updateNavigationSelection();
+                    return false;
+                }
 
                 if (!Preferences.get(this).isPremiumRequest()) {
                     mPosition = mLastPosition;
-                    mNavigationView.getMenu().getItem(mPosition).setChecked(true);
+                    updateNavigationSelection();
                     onBuyPremiumRequest();
-                    return;
+                    return false;
                 }
             }
         }
 
-        if (position == 4) {
-            if (WallpaperHelper.getWallpaperType(this)
-                    == WallpaperHelper.EXTERNAL_APP) {
-                mPosition = mLastPosition;
-                mNavigationView.getMenu().getItem(mPosition).setChecked(true);
-                WallpaperHelper.launchExternalApp(CandyBarMainActivity.this);
-                return;
-            }
+        if (position == Extras.Tag.WALLPAPERS.idx &&
+                WallpaperHelper.getWallpaperType(this) == WallpaperHelper.EXTERNAL_APP) {
+            mPosition = mLastPosition;
+            updateNavigationSelection();
+            WallpaperHelper.launchExternalApp(CandyBarMainActivity.this);
+            return false;
         }
 
         if (position != mLastPosition) {
             mLastPosition = mPosition = position;
             setFragment(getFragment(position));
         }
+        return true;
     }
 
     private void setFragment(Fragment fragment) {
@@ -991,11 +1096,68 @@ public abstract class CandyBarMainActivity extends AppCompatActivity implements
             ft.commitAllowingStateLoss();
         }
 
-        Menu menu = mNavigationView.getMenu();
-        menu.getItem(mPosition).setChecked(true);
-        mToolbarTitle.setText(menu.getItem(mPosition).getTitle());
+        updateNavigationSelection();
+        MenuItem drawerItem = mNavigationView.getMenu().findItem(
+                getNavigationItemForPosition(mPosition));
+        if (drawerItem != null) {
+            mToolbarTitle.setText(drawerItem.getTitle());
+        }
 
         backPressedCallback.setEnabled(mFragmentTag != Extras.Tag.HOME);
+        supportInvalidateOptionsMenu();
+    }
+
+    private void updateNavigationSelection() {
+        int itemId = getNavigationItemForPosition(mPosition);
+        MenuItem drawerItem = mNavigationView.getMenu().findItem(itemId);
+        if (drawerItem != null) {
+            drawerItem.setChecked(true);
+        }
+        if (mBottomNavigation != null) {
+            MenuItem bottomItem = mBottomNavigation.getMenu().findItem(itemId);
+            if (bottomItem != null && bottomItem.isVisible()) {
+                bottomItem.setChecked(true);
+            }
+        }
+    }
+
+    private void setNavigationItemVisible(int itemId, boolean visible) {
+        MenuItem drawerItem = mNavigationView.getMenu().findItem(itemId);
+        if (drawerItem != null) {
+            drawerItem.setVisible(visible);
+        }
+        if (mBottomNavigation != null) {
+            MenuItem bottomItem = mBottomNavigation.getMenu().findItem(itemId);
+            if (bottomItem != null) {
+                bottomItem.setVisible(visible);
+            }
+        }
+    }
+
+    private int getPositionForNavigationItem(int itemId) {
+        if (itemId == R.id.navigation_view_home) return Extras.Tag.HOME.idx;
+        if (itemId == R.id.navigation_view_apply) return Extras.Tag.APPLY.idx;
+        if (itemId == R.id.navigation_view_icons) return Extras.Tag.ICONS.idx;
+        if (itemId == R.id.navigation_view_request) return Extras.Tag.REQUEST.idx;
+        if (itemId == R.id.navigation_view_wallpapers) return Extras.Tag.WALLPAPERS.idx;
+        if (itemId == R.id.navigation_view_presets) return Extras.Tag.PRESETS.idx;
+        if (itemId == R.id.navigation_view_settings) return Extras.Tag.SETTINGS.idx;
+        if (itemId == R.id.navigation_view_faqs) return Extras.Tag.FAQS.idx;
+        if (itemId == R.id.navigation_view_about) return Extras.Tag.ABOUT.idx;
+        return -1;
+    }
+
+    private int getNavigationItemForPosition(int position) {
+        if (position == Extras.Tag.HOME.idx) return R.id.navigation_view_home;
+        if (position == Extras.Tag.APPLY.idx) return R.id.navigation_view_apply;
+        if (position == Extras.Tag.ICONS.idx) return R.id.navigation_view_icons;
+        if (position == Extras.Tag.REQUEST.idx) return R.id.navigation_view_request;
+        if (position == Extras.Tag.WALLPAPERS.idx) return R.id.navigation_view_wallpapers;
+        if (position == Extras.Tag.PRESETS.idx) return R.id.navigation_view_presets;
+        if (position == Extras.Tag.SETTINGS.idx) return R.id.navigation_view_settings;
+        if (position == Extras.Tag.FAQS.idx) return R.id.navigation_view_faqs;
+        if (position == Extras.Tag.ABOUT.idx) return R.id.navigation_view_about;
+        return R.id.navigation_view_home;
     }
 
     private Fragment getFragment(int position) {

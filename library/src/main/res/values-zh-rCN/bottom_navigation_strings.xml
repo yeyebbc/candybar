@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="bottom_navigation_apply">应用</string>
+    <string name="bottom_navigation_request">申请</string>
+    <string name="bottom_navigation_wallpapers">壁纸</string>
+</resources>

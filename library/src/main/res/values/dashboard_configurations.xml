@@ -109,6 +109,23 @@
     <bool name="use_flat_card">false</bool>
 
 
+
+    <!--
+        CONFIG: NAVIGATION
+    -->
+    <!-- Use a bottom navigation bar instead of the navigation drawer -->
+    <bool name="use_bottom_navigation">false</bool>
+
+    <!-- Show text labels below bottom navigation icons -->
+    <bool name="show_bottom_navigation_labels">true</bool>
+
+    <!-- Use Material 3 bottom navigation controls while keeping the
+        Material You / Material 2 colors configured above.
+        When true, controls use MD3 styles even if Material You is off,
+        while colors still follow the theme (dynamic with MY, MD2 colors without). -->
+    <bool name="use_md3_controls">false</bool>
+
+
     <!--
         CONFIG: NAVIGATION VIEW HEADER
     -->
