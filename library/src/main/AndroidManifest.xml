@@ -52,7 +52,10 @@
         <package android:name="com.android.cellbroadcastreceiver" />
     </queries>
 
-    <application>
+    <application
+        android:enableOnBackInvokedCallback="true"
+        tools:targetApi="33">
+
         <meta-data
             android:name="android.max_aspect"
             android:value="2.1" />

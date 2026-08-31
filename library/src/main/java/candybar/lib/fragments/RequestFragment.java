@@ -4,6 +4,7 @@ import static candybar.lib.helpers.DrawableHelper.getPackageIcon;
 import static candybar.lib.helpers.DrawableHelper.getReqIconBase64;
 import static candybar.lib.helpers.ViewHelper.setFastScrollColor;
 
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.ResolveInfo;
@@ -330,7 +331,7 @@ public class RequestFragment extends Fragment implements View.OnClickListener {
                 .typeface(TypefaceHelper.getMedium(requireActivity()),
                         TypefaceHelper.getRegular(requireActivity()))
                 .title(getIconRequestNotificationTitle())
-                .content(R.string.icon_request_notification_message)
+                .content(getAppString("icon_request_notification_message"))
                 .positiveText(R.string.ok)
                 .onPositive((d, which) -> Preferences.get(requireActivity())
                         .setIconRequestNotificationShown(true))
@@ -341,13 +342,25 @@ public class RequestFragment extends Fragment implements View.OnClickListener {
     }
 
     private boolean hasIconRequestNotification() {
-        return !requireActivity().getString(R.string.icon_request_notification_message).isEmpty();
+        String message = getAppString("icon_request_notification_message");
+        return message != null && !message.isEmpty();
     }
 
     private String getIconRequestNotificationTitle() {
-        String title = requireActivity().getString(R.string.icon_request_notification_title);
-        if (title.isEmpty()) return requireActivity().getString(R.string.request_title);
+        String title = getAppString("icon_request_notification_title");
+        if (title == null || title.isEmpty()) {
+            return requireActivity().getString(R.string.request_title);
+        }
         return title;
+    }
+
+    @Nullable
+    private String getAppString(String name) {
+        Context context = requireActivity();
+        int resId = context.getResources().getIdentifier(
+                name, "string", context.getPackageName());
+        if (resId == 0) return null;
+        return context.getString(resId);
     }
 
     public void refreshIconRequest() {

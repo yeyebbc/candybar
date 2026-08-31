@@ -64,6 +64,14 @@
     <string name="regular_request_pacific_api_key"><!--318db445-de03-4e24-bc4f-36b95cf16d22--></string>
     <string name="premium_request_pacific_api_key"></string>
 
+    <!-- Icon request notification dialog
+        Shown once when the icon request page is opened for the first time after a fresh install or an update.
+        Leave "icon_request_notification_message" empty to disable the dialog.
+        Leave "icon_request_notification_title" empty to use the default "Icon Request" title.
+        Translate these two strings by adding them to the appropriate values-XX folder. -->
+    <string name="icon_request_notification_title">Icon Request</string>
+    <string name="icon_request_notification_message">Read the instructions before requesting icons.</string>
+
     <!-- CONFIG: CLOUD WALLPAPERS -->
     <!--<string name="wallpaper_json">com.candybar.sample</string>-->
     <string name="wallpaper_json">https://zixpo.github.io/candybar-sources/walls.json</string>
