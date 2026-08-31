@@ -36,7 +36,7 @@
 
     <!-- CONFIG: NAVIGATION -->
     <!-- Use a bottom navigation bar instead of the navigation drawer -->
-    <bool name="use_bottom_navigation">true</bool>
+    <bool name="use_bottom_navigation">false</bool>
 
     <!-- Show text labels below bottom navigation icons -->
     <bool name="show_bottom_navigation_labels">true</bool>

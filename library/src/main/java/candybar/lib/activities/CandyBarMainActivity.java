@@ -773,37 +773,12 @@ public abstract class CandyBarMainActivity extends AppCompatActivity implements
     public void onSearchExpanded(boolean expand) {
         mIsMenuVisible = !expand;
 
-        if (expand) {
-            int color = ColorHelper.getAttributeColor(this, R.attr.cb_toolbarIcon);
-            mToolbar.setNavigationIcon(DrawableHelper.getTintedDrawable(
-                    this, R.drawable.ic_toolbar_back, color));
-            if (mUseBottomNavigation) {
-                mToolbar.setNavigationOnClickListener(view ->
-                        getOnBackPressedDispatcher().onBackPressed());
-            }
-        } else {
+        if (!expand) {
             SoftKeyboardHelper.closeKeyboard(this);
             ColorHelper.setStatusBarColor(this, Color.TRANSPARENT, true);
-            if (mUseBottomNavigation) {
-                mToolbar.setNavigationIcon(null);
-                mToolbar.setNavigationOnClickListener(null);
-            } else {
-                if (CandyBarApplication.getConfiguration().getNavigationIcon() == CandyBarApplication.NavigationIcon.DEFAULT) {
-                    mDrawerToggle.setDrawerArrowDrawable(new DrawerArrowDrawable(this));
-                } else {
-                    mToolbar.setNavigationIcon(ConfigurationHelper.getNavigationIcon(this,
-                            CandyBarApplication.getConfiguration().getNavigationIcon()));
-                }
-
-                mToolbar.setNavigationOnClickListener(view ->
-                        mDrawerLayout.openDrawer(GravityCompat.START));
-            }
         }
 
-        mDrawerLayout.setDrawerLockMode(
-                expand || mUseBottomNavigation
-                        ? DrawerLayout.LOCK_MODE_LOCKED_CLOSED
-                        : DrawerLayout.LOCK_MODE_UNLOCKED);
+        updateNavigationChrome();
         supportInvalidateOptionsMenu();
     }
 
@@ -926,6 +901,8 @@ public abstract class CandyBarMainActivity extends AppCompatActivity implements
             mDrawerToggle.setDrawerArrowDrawable(drawerArrowDrawable);
             mDrawerToggle.setDrawerIndicatorEnabled(true);
         }
+
+        mDrawerLayout.addDrawerListener(mDrawerToggle);
 
         initNavigationItems();
 
@@ -1102,9 +1079,52 @@ public abstract class CandyBarMainActivity extends AppCompatActivity implements
         if (drawerItem != null) {
             mToolbarTitle.setText(drawerItem.getTitle());
         }
+        updateNavigationChrome();
 
         backPressedCallback.setEnabled(mFragmentTag != Extras.Tag.HOME);
         supportInvalidateOptionsMenu();
+    }
+
+    private void updateNavigationChrome() {
+        boolean isHomeChildPage = isHomeChildPage();
+        boolean showBackButton = !mIsMenuVisible ||
+                (mUseBottomNavigation && isHomeChildPage);
+
+        mBottomNavigationContainer.setVisibility(
+                mUseBottomNavigation && !isHomeChildPage ? View.VISIBLE : View.GONE);
+
+        if (showBackButton) {
+            int color = ColorHelper.getAttributeColor(this, R.attr.cb_toolbarIcon);
+            mToolbar.setNavigationIcon(DrawableHelper.getTintedDrawable(
+                    this, R.drawable.ic_toolbar_back, color));
+            mToolbar.setNavigationOnClickListener(view ->
+                    getOnBackPressedDispatcher().onBackPressed());
+        } else if (mUseBottomNavigation) {
+            mToolbar.setNavigationIcon(null);
+            mToolbar.setNavigationOnClickListener(null);
+        } else {
+            if (CandyBarApplication.getConfiguration().getNavigationIcon() ==
+                    CandyBarApplication.NavigationIcon.DEFAULT) {
+                mDrawerToggle.setDrawerArrowDrawable(new DrawerArrowDrawable(this));
+            } else {
+                mToolbar.setNavigationIcon(ConfigurationHelper.getNavigationIcon(this,
+                        CandyBarApplication.getConfiguration().getNavigationIcon()));
+            }
+            mToolbar.setNavigationOnClickListener(view ->
+                    mDrawerLayout.openDrawer(GravityCompat.START));
+        }
+
+        mDrawerLayout.setDrawerLockMode(
+                !mIsMenuVisible || mUseBottomNavigation
+                        ? DrawerLayout.LOCK_MODE_LOCKED_CLOSED
+                        : DrawerLayout.LOCK_MODE_UNLOCKED);
+    }
+
+    private boolean isHomeChildPage() {
+        return mFragmentTag == Extras.Tag.PRESETS ||
+                mFragmentTag == Extras.Tag.SETTINGS ||
+                mFragmentTag == Extras.Tag.FAQS ||
+                mFragmentTag == Extras.Tag.ABOUT;
     }
 
     private void updateNavigationSelection() {
