@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/navigation_view_home"
+        android:icon="@drawable/ic_drawer_home"
+        android:title="@string/navigation_view_home" />
+    <item
+        android:id="@+id/navigation_view_apply"
+        android:icon="@drawable/ic_drawer_apply"
+        android:title="@string/bottom_navigation_apply" />
+    <item
+        android:id="@+id/navigation_view_icons"
+        android:icon="@drawable/ic_drawer_icons"
+        android:title="@string/navigation_view_icons" />
+    <item
+        android:id="@+id/navigation_view_request"
+        android:icon="@drawable/ic_drawer_request"
+        android:title="@string/bottom_navigation_request" />
+    <item
+        android:id="@+id/navigation_view_wallpapers"
+        android:icon="@drawable/ic_drawer_wallpapers"
+        android:title="@string/bottom_navigation_wallpapers" />
+</menu>
