@@ -26,6 +26,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.OnBackPressedCallback;
+import androidx.activity.BackEventCompat;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBarDrawerToggle;
@@ -159,6 +160,14 @@ public abstract class CandyBarMainActivity extends AppCompatActivity implements
 
     private boolean mIsMenuVisible = true;
     private boolean mUseBottomNavigation;
+    private OnBackPressedCallback mChildBackCallback;
+    private View mChildPageScrim;
+    // Note 1: Predictive-back state for Home child pages.
+    // mChildBackCallback is disabled by default (see the constructor
+    // argument "false") and only enabled while a child page is shown.
+    // mChildPageScrim is the dim overlay laid between Home and the
+    // child; it is created lazily when the child page is opened and
+    // removed again when the page is left.
     private boolean prevIsDarkTheme;
 
     public static List<Request> sMissedApps;
@@ -177,9 +186,19 @@ public abstract class CandyBarMainActivity extends AppCompatActivity implements
     @NonNull
     public abstract ActivityConfiguration onInit();
 
+    // Note 2: The FIRST back handler registered for this activity. The
+    // dispatcher consults callbacks in the reverse order in which they
+    // were added, so the LAST enabled callback wins; this one is the
+    // fallback for everything that is not a Home child page. It is
+    // disabled while a child page is shown so the child-specific
+    // handler receives the gesture instead (see Note 3).
     private final OnBackPressedCallback backPressedCallback = new OnBackPressedCallback(true) {
         @Override
         public void handleOnBackPressed() {
+            // Note 4: Any other in-fragment back stack (e.g. the icon
+            // search) is popped wholesale. This also fires after the
+            // predictive back pop of a child page, but by then the
+            // back stack is empty, so this branch is skipped.
             if (mFragManager.getBackStackEntryCount() > 0) {
                 clearBackStack();
                 return;
@@ -190,6 +209,10 @@ public abstract class CandyBarMainActivity extends AppCompatActivity implements
                 return;
             }
 
+            // Note 5: Non-Home pages are simply replaced by Home. This
+            // covers top-level tabs (Apply, Icons, ...) and drawer
+            // pages; the four Home child pages never reach this branch
+            // because their callback is the one that consumes Back.
             if (mFragmentTag != Extras.Tag.HOME) {
                 mPosition = mLastPosition = 0;
                 setFragment(getFragment(mPosition));
@@ -232,7 +255,79 @@ public abstract class CandyBarMainActivity extends AppCompatActivity implements
             initNavigationView(mToolbar);
             initNavigationViewHeader();
         }
+        // Note 3: The child-page back handler. A custom OnBackPressedCallback
+        // is used instead of a Fragment back stack on purpose: a Fragment
+        // stack would play the system animation only at the commit moment,
+        // whereas AndroidX forwards the live drag progress to these
+        // callbacks, letting us move the view 1:1 with the finger (the
+        // "predictive back" experience). The four state methods are:
+        // started -> progressed (many times) -> cancelled OR pressed.
         registerBackPressHandler();
+        mChildBackCallback = new OnBackPressedCallback(false) {
+            // Note 6: Starts disabled; updateNavigationChrome() enables it
+            // exactly while a bottom-nav child page is shown. An enabled
+            // callback that consumes Back prevents the system from playing
+            // its own end-screen animation, so we must stay in charge here.
+            @Override
+            public void handleOnBackStarted(BackEventCompat event) {
+                View view = getChildPageView();
+                if (view != null) {
+                    // Note 7: ViewCompat.setZ fixes the DRAWING order
+                    // between the child page and the scrim. The scrim is a
+                    // plain view added to the same FrameLayout; FragmentManager
+                    // may place the fragment view either side of it. Z is by
+                    // definition above any default-z sibling, so whatever the
+                    // view-pair order is, the child always draws on top of
+                    // the scrim, and only Home is dimmed.
+                    ViewCompat.setZ(view, 1f);
+                    view.setTranslationX(0f);
+                }
+                setChildPageScrimAlpha(1f);
+            }
+
+            @Override
+            public void handleOnBackProgressed(BackEventCompat event) {
+                // Note 8: Runs on EVERY animation frame while the finger
+                // moves, so it must stay cheap: one map lookup plus two
+                // property writes. BackEventCompat.getProgress() is the
+                // normalized drag position in [0, 1]; the multiplier is
+                // the child width, making it slide exactly as far as the
+                // finger does. The scrim fades the OPPOSITE way: fully
+                // dimmed at progress 0, fully clear at progress 1.
+                View view = getChildPageView();
+                if (view != null) {
+                    view.setTranslationX(event.getProgress() * view.getWidth());
+                }
+                setChildPageScrimAlpha(1f - event.getProgress());
+            }
+
+            @Override
+            public void handleOnBackCancelled() {
+                // Note 9: The gesture was released before it committed, so
+                // both the page and the scrim must SPRING BACK to their
+                // resting state. Property animators are started instead of
+                // setting values directly, so the restoration is smooth
+                // rather than an instant jump.
+                View view = getChildPageView();
+                if (view != null) {
+                    view.animate().translationX(0f).setDuration(200).start();
+                }
+                if (mChildPageScrim != null) {
+                    mChildPageScrim.animate().alpha(0f).setDuration(200).start();
+                }
+            }
+
+            // Note 10: Past the commit threshold. The callback performs the
+            // navigation itself (remove child, restore chrome via
+            // leaveChildPage()) instead of delegating to the dispatcher -
+            // delegating would fall through to the system default and
+            // finish the whole activity.
+            @Override
+            public void handleOnBackPressed() {
+                leaveChildPage();
+            }
+        };
+        getOnBackPressedDispatcher().addCallback(this, mChildBackCallback);
 
         ViewCompat.setOnApplyWindowInsetsListener(mDrawerLayout, (v, insets) -> {
             ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) mToolbar.getLayoutParams();
@@ -1062,11 +1157,55 @@ public abstract class CandyBarMainActivity extends AppCompatActivity implements
         return true;
     }
 
+    // Note 11: The single navigation entry point. All destination switches
+    // go through here, which is what keeps the rest of the chrome code
+    // simple: pick a transaction strategy, commit it, then refresh every
+    // dependent UI element.
     private void setFragment(Fragment fragment) {
-        clearBackStack();
-
-        FragmentTransaction ft = mFragManager.beginTransaction()
-                .replace(R.id.container, fragment, mFragmentTag.value);
+        FragmentTransaction ft;
+        if (isBottomNavChildPage()) {
+            // Note 12: Two distinctly different paths for a child page:
+            // (a) the fragment was RESTORED by FragmentManager after a
+            // configuration change - re-show it with replace();
+            // (b) a fresh open - ADD it on top of Home. It is important
+            // that Home is NOT replace()d away here: the predictive back
+            // preview reveals the previous screen, so Home must still be
+            // alive in the view hierarchy under the child.
+            if (mFragManager.findFragmentByTag(mFragmentTag.value) != null) {
+                // State restore path: the child already exists, just re-show it.
+                // The scrim was a plain view and was not restored; drop it.
+                mChildPageScrim = null;
+                ft = mFragManager.beginTransaction()
+                        .replace(R.id.container, fragment, mFragmentTag.value);
+            } else {
+                // Add the child on top of Home and keep Home in the view
+                // hierarchy behind it. The custom child-back callback slides
+                // the child away with the finger, revealing Home underneath.
+                // Invisible until the predictive back drag starts, so the child
+                // page is not dimmed while it is simply shown.
+                // 0x66 alpha = 40% black scrim over Home.
+                mChildPageScrim = new View(this);
+                mChildPageScrim.setBackgroundColor(0x66000000);
+                mChildPageScrim.setAlpha(0f);
+                ViewGroup container = findViewById(R.id.container);
+                container.addView(mChildPageScrim, new ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT));
+                ft = mFragManager.beginTransaction()
+                        .add(R.id.container, fragment, mFragmentTag.value)
+                        .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE);
+            }
+        } else {
+            clearBackStack();
+            ft = mFragManager.beginTransaction()
+                    .replace(R.id.container, fragment, mFragmentTag.value);
+        }
+        // Note 13: commit() posts the transaction to the main thread (it
+        // only succeeds while the activity is NOT saving state). Some
+        // code paths reach here from onSaveInstanceState, e.g. a finish
+        // happening mid-transition; commitAllowingStateLoss() tolerates
+        // that, accepting that a fragment could theoretically be lost if
+        // the process is killed right after - an acceptable edge case.
         try {
             ft.commit();
         } catch (Exception e) {
@@ -1081,10 +1220,15 @@ public abstract class CandyBarMainActivity extends AppCompatActivity implements
         }
         updateNavigationChrome();
 
-        backPressedCallback.setEnabled(mFragmentTag != Extras.Tag.HOME);
+        boolean isChildPage = isBottomNavChildPage();
+        backPressedCallback.setEnabled(!isChildPage && mFragmentTag != Extras.Tag.HOME);
         supportInvalidateOptionsMenu();
     }
 
+    // Note 14: Everything that reacts to "which page is shown" in a single
+    // method: toolbar icon, bottom-bar visibility, drawer lock state and
+    // the child-back callback. Keeping it centralized means a new page
+    // type only needs a new branch here instead of scattered updates.
     private void updateNavigationChrome() {
         boolean isHomeChildPage = isHomeChildPage();
         boolean showBackButton = !mIsMenuVisible ||
@@ -1114,17 +1258,112 @@ public abstract class CandyBarMainActivity extends AppCompatActivity implements
                     mDrawerLayout.openDrawer(GravityCompat.START));
         }
 
+        // Note 15: The drawer is locked whenever either the search bar is
+        // expanded OR bottom navigation is used (no drawer UI in that
+        // mode). The drawer lock is a SINGLE source of truth: if it says
+        // LOCKED, opening with the hamburger must also be blocked, which
+        // is why the lock (not the button) is what prevents a child page
+        // from exposing two parallel back paths at once.
         mDrawerLayout.setDrawerLockMode(
                 !mIsMenuVisible || mUseBottomNavigation
                         ? DrawerLayout.LOCK_MODE_LOCKED_CLOSED
                         : DrawerLayout.LOCK_MODE_UNLOCKED);
+
+        if (mChildBackCallback != null) {
+            mChildBackCallback.setEnabled(isBottomNavChildPage());
+        }
     }
 
+    // Note 16: Two predicate methods keep a single definition of "child
+    // page". The enum-based one matches content, the navigation-mode one
+    // adds the UI-mode condition. Using them instead of inlining the tag
+    // comparisons means adding a new child destination happens in exactly
+    // one place.
     private boolean isHomeChildPage() {
         return mFragmentTag == Extras.Tag.PRESETS ||
                 mFragmentTag == Extras.Tag.SETTINGS ||
                 mFragmentTag == Extras.Tag.FAQS ||
                 mFragmentTag == Extras.Tag.ABOUT;
+    }
+
+    private boolean isBottomNavChildPage() {
+        return mUseBottomNavigation && isHomeChildPage();
+    }
+
+    // Note 17: Runs when the predictive back gesture COMMITS (or the back
+    // arrow is tapped): undo the child page and bring the chrome back to
+    // the Home state. Fragment-based navigation is a transaction - find
+    // the fragment by tag, remove it with the built-in FADE transition,
+    // then restore every piece of state that setFragment() set while the
+    // child page was entered.
+    private void leaveChildPage() {
+        Fragment child = mFragManager.findFragmentByTag(mFragmentTag.value);
+        if (child != null) {
+            // Note 18: TRANSIT_FRAGMENT_FADE is one of the platform-provided
+            // transition constants - no custom animation XML needed when the
+            // page has none of its own. During a predictive back the system
+            // already drove the drag; this fade only handles the final swap.
+            FragmentTransaction ft = mFragManager.beginTransaction()
+                    .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE)
+                    .remove(child);
+            try {
+                ft.commit();
+            } catch (Exception e) {
+                ft.commitAllowingStateLoss();
+            }
+        }
+        if (mChildPageScrim != null) {
+            ViewGroup container = findViewById(R.id.container);
+            container.removeView(mChildPageScrim);
+            mChildPageScrim = null;
+        }
+
+        // Note 19: Home might NOT be behind the child - e.g. after a
+        // configuration change the child was restored alone. In that case
+        // the remove above leaves an empty container, so go through the
+        // normal navigation entry point to rebuild Home. The position
+        // MUST be set first: setFragment reads it to keep the bottom bar
+        // and drawer selection in sync.
+        if (mFragManager.findFragmentByTag(Extras.Tag.HOME.value) == null) {
+            // Home was not kept behind (state restored without it): rebuild it.
+            mPosition = mLastPosition = Extras.Tag.HOME.idx;
+            setFragment(getFragment(Extras.Tag.HOME.idx));
+            return;
+        }
+
+        // Note 20: Fast path: Home is still under the child. Restore the
+        // activity state directly instead of re-entering setFragment, so
+        // the already-revealed Home view is left untouched.
+        mPosition = mLastPosition = Extras.Tag.HOME.idx;
+        mFragmentTag = Extras.Tag.HOME;
+        updateNavigationSelection();
+        MenuItem drawerItem = mNavigationView.getMenu().findItem(
+                getNavigationItemForPosition(mPosition));
+        if (drawerItem != null) {
+            mToolbarTitle.setText(drawerItem.getTitle());
+        }
+        updateNavigationChrome();
+        supportInvalidateOptionsMenu();
+    }
+
+    // Note 21: Tag-based lookup keeps the gesture code independent of which
+    // child page is open: the current "child tag" is the one stored by
+    // getFragment() when the destination was selected. getView() may be
+    // null briefly while the transaction commits, hence the null guard on
+    // every use - the gesture then simply skips the frame.
+    private View getChildPageView() {
+        Fragment fragment = mFragManager.findFragmentByTag(mFragmentTag.value);
+        return fragment != null ? fragment.getView() : null;
+    }
+
+    // Note 22: Central scrim alpha setter: the null guard makes the four
+    // gesture callbacks safe even if the scrim was not created for this
+    // page instance (e.g. when a restored page never went through the
+    // fresh-open path).
+    private void setChildPageScrimAlpha(float alpha) {
+        if (mChildPageScrim != null) {
+            mChildPageScrim.setAlpha(alpha);
+        }
     }
 
     private void updateNavigationSelection() {

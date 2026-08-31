@@ -2,7 +2,15 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="?attr/cb_mainBackground">
+    <!-- Note 1: Two XML namespaces: "android" for framework
+         attributes, "app" for custom attributes defined by THIS
+         library or support widgets. The "app:fontFamily" used below
+         requires the app namespace, while android:textSize does not. -->
+    <!-- Note 2: Opaque theme-attributed background (see Note 2 in
+         fragment_settings.xml): needed because the predictive back
+         gesture keeps the Home fragment alive behind this page. -->
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/faqs_list"
@@ -28,11 +36,24 @@
         android:visibility="gone"
         android:textColor="?android:attr/textColorPrimary"
         app:fontFamily="@font/medium" />
+    <!-- Note 3: "gone" keeps the empty-result message OUT of the
+         measure/layout pass until it is needed; toggling visibility
+         is cheaper than adding/removing views. "?android:attr/text..."
+         is the platform-provided one-off text color, themed by the
+         system - no hard-coded color needed. -->
+
+    <!-- Note 4: The scrim inserted during the predictive back drag
+         transitions to the exact same background tone, so the fade
+         from page to Home is visually seamless. -->
 
     <View
         android:id="@+id/shadow"
         android:layout_width="match_parent"
         android:layout_height="@dimen/toolbar_shadow"
         android:background="@drawable/toolbar_shadow" />
+    <!-- Note 5: This final child of the root frame is drawn last, so
+         it sits on top of the list and softens the seam between the
+         toolbar and the scrolling content - the classic Material
+         "content fades under the bar" effect. -->
 
 </FrameLayout>

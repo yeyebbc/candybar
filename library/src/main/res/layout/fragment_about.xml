@@ -1,14 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="?attr/cb_mainBackground">
+    <!-- Note 1: Opaque theme-attributed background (see the sibling
+         page files): the predictive back flow keeps Home behind this
+         fragment, so the surface must cover it completely. -->
+    <!-- Note 2: This fragment is unusual: padding is applied from
+         Java (AboutFragment.java), not in XML, because it needs the
+         measured insets/values computed at runtime. -->
 
     <!-- NOTE: Padding of this view is set in AboutFragment.java -->
+    <!-- Note 3: The existing NOTE above marks a review trade-off:
+         runtime padding keeps the list inset budget exact, at the
+         cost of the layout being incomplete until the fragment
+         creates its view. The pre-existing comment is preserved. -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerview"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:clipToPadding="false" />
+    <!-- Note 4: No paddingBottom here for a reason: it varies per
+         page. Settings/FAQs leave room for the action bar, About
+         delegates everything to Java so it can align with the
+         social buttons it draws. -->
 
     <View
         android:id="@+id/shadow"

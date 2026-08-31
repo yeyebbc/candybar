@@ -1,7 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="?attr/cb_mainBackground">
+    <!-- Note 1: THEME ATTRIBUTE reference (see fragment_settings.xml).
+         It resolves per theme, so child pages keep an opaque surface
+         that both matches the active appearance and covers Home
+         which is retained behind the child for predictive back. -->
+    <!-- Note 2: paddingStart + paddingLeft are BOTH declared here.
+         paddingStart is the modern RTL-aware attribute; paddingLeft
+         is the legacy fallback for API < 17. Both must agree so the
+         layout looks correct no matter the direction of the locale. -->
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/presets_grid"
@@ -18,6 +27,15 @@
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:layout_gravity="end" />
+    <!-- Note 3: A drag handle overlaid on the right edge. It belongs
+         to the fragment view - and the scrim overlay used during the
+         predictive back gesture is inserted UNDER the fragment, so
+         this handle is never covered while the page is shown. -->
+
+    <!-- Note 4: The pre-load spinner is hidden by default and shown
+         only while presets are being parsed. Keeping the layout
+         constant (visibility toggle, no add/remove) avoids relayouts
+         and is the standard way to reserve space for async content. -->
 
     <ProgressBar
         android:id="@+id/progress"
@@ -32,4 +50,7 @@
         android:layout_width="match_parent"
         android:layout_height="@dimen/toolbar_shadow"
         android:background="@drawable/toolbar_shadow" />
+    <!-- Note 5: Same gradient as the sibling pages; it sits at the
+         bottom of the root frame, layered above the scroll handle
+         so the list fades beneath the toolbar area cleanly. -->
 </FrameLayout>

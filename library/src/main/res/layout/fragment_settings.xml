@@ -1,7 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="?attr/cb_mainBackground">
+    <!-- Note 1: This is the root view of the Settings child page. The
+         background uses "?attr/cb_mainBackground" - a THEME ATTRIBUTE
+         reference, not a fixed color. Theme attributes resolve to
+         different values per theme (light/dark/dynamic), so the same
+         XML works for every appearance. -->
+    <!-- Note 2: The page MUST be opaque. CandyBar keeps Home in the
+         view hierarchy BEHIND the child (FragmentTransaction.add, not
+         replace) so the predictive back gesture can reveal it.
+         Without this background the Home contents would show through
+         the child controls while it is simply on screen. -->
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerview"
@@ -9,11 +20,18 @@
         android:layout_height="match_parent"
         android:paddingBottom="?attr/actionBarSize"
         android:clipToPadding="false" />
+    <!-- Note 3: clipToPadding=false lets the list scroll all the way
+         to the edges while still reserving a bottom inset equal to
+         the action bar height: the last items slide UNDER the
+         toolbar shadow instead of being cut off by the padding. -->
 
     <View
         android:id="@+id/shadow"
         android:layout_width="match_parent"
         android:layout_height="@dimen/toolbar_shadow"
         android:background="@drawable/toolbar_shadow" />
+    <!-- Note 4: A soft gradient drawn below the toolbar. The rest of
+         the activity chrome (toolbar, bottom bar) lives OUTSIDE the
+         fragment; only the content fragments are swapped here. -->
 
 </FrameLayout>
