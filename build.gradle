@@ -21,9 +21,10 @@ allprojects {
         def major = 3
         def minor = 23
         def patch = 0
+        def fork = 2
 
         VersionCode = major * 10000 + minor * 100 + patch
-        VersionName = "$major.$minor.$patch-yeyebbc.1"
+        VersionName = "$major.$minor.$patch-yeyebbc.$fork"
 
         MinSdk = 21
         TargetSdk = 36
